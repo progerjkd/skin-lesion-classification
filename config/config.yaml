@@ -1,0 +1,233 @@
+# Main Configuration for Skin Lesion Classification MLOps Pipeline
+
+project:
+  name: skin-lesion-classification
+  version: "0.1.0"
+  environment: dev  # dev, staging, prod
+
+aws:
+  region: us-east-1
+  account_id: ""  # Fill in your AWS account ID
+
+  # S3 Buckets (will be created by Terraform)
+  buckets:
+    data: ""  # Will be populated from Terraform outputs
+    models: ""
+    pipeline: ""
+    logs: ""
+
+  # IAM Roles (will be created by Terraform)
+  roles:
+    sagemaker_execution: ""  # ARN from Terraform outputs
+    lambda_execution: ""
+    step_functions: ""
+
+  # SageMaker
+  sagemaker:
+    model_package_group: "skin-lesion-models"
+    pipeline_name: "skin-lesion-pipeline"
+
+  # ECR Repositories
+  ecr:
+    training_repo: ""  # URL from Terraform outputs
+    inference_repo: ""
+
+# Data Configuration
+data:
+  source: "isic2019"  # isic2019, ham10000, bcn20000
+
+  # Data splits
+  splits:
+    train: 0.8
+    validation: 0.1
+    test: 0.1
+
+  # Image preprocessing
+  image_size: 224
+  normalization:
+    mean: [0.485, 0.456, 0.406]
+    std: [0.229, 0.224, 0.225]
+
+  # Class names (update based on dataset)
+  classes:
+    - MEL  # Melanoma
+    - NV   # Melanocytic nevus
+    - BCC  # Basal cell carcinoma
+    - AK   # Actinic keratosis
+    - BKL  # Benign keratosis
+    - DF   # Dermatofibroma
+    - VASC # Vascular lesion
+    - SCC  # Squamous cell carcinoma
+
+# Model Configuration
+model:
+  architecture: resnet50  # resnet50, resnet101, efficientnet_b0, efficientnet_b4, densenet121, mobilenet_v2
+  pretrained: true
+  num_classes: 8
+
+  # Training hyperparameters
+  training:
+    epochs: 50
+    batch_size: 32
+    learning_rate: 0.001
+    optimizer: adam
+    scheduler:
+      type: reduce_on_plateau
+      factor: 0.1
+      patience: 5
+
+  # Data augmentation
+  augmentation:
+    random_crop: true
+    horizontal_flip: true
+    vertical_flip: true
+    rotation: 20
+    color_jitter:
+      brightness: 0.2
+      contrast: 0.2
+      saturation: 0.2
+
+# SageMaker Pipeline Configuration
+pipeline:
+  # Processing
+  processing:
+    instance_type: ml.m5.xlarge
+    instance_count: 1
+
+  # Training
+  training:
+    instance_type: ml.p3.2xlarge
+    instance_count: 1
+    use_spot_instances: true
+    max_runtime_seconds: 86400  # 24 hours
+    max_wait_seconds: 90000     # 25 hours
+
+  # Model approval
+  model_approval_status: PendingManualApproval  # PendingManualApproval, Approved
+
+  # Evaluation threshold
+  accuracy_threshold: 0.85  # Model must achieve this accuracy to be registered
+
+# Deployment Configuration
+deployment:
+  # Endpoint configuration
+  endpoint:
+    name: skin-lesion-endpoint
+    instance_type: ml.m5.xlarge
+    initial_instance_count: 1
+
+    # Auto-scaling
+    auto_scaling:
+      enabled: true
+      min_capacity: 1
+      max_capacity: 5
+      target_invocations: 1000
+      scale_in_cooldown: 300
+      scale_out_cooldown: 60
+
+  # Inference configuration
+  inference:
+    max_concurrent_transforms: 4
+    max_payload_mb: 6
+
+# Monitoring Configuration
+monitoring:
+  # Data quality monitoring
+  data_quality:
+    enabled: true
+    schedule: cron(0 * * * ? *)  # Every hour
+    baseline_job_name: skin-lesion-data-quality-baseline
+
+  # Model quality monitoring
+  model_quality:
+    enabled: true
+    schedule: cron(0 */6 * * ? *)  # Every 6 hours
+    threshold:
+      accuracy: 0.05  # Alert if accuracy drops by 5%
+      precision: 0.05
+      recall: 0.05
+
+  # Drift detection
+  drift:
+    enabled: true
+    p_value_threshold: 0.05
+    trigger_retraining: true
+
+  # CloudWatch alarms
+  alarms:
+    endpoint_errors_threshold: 10
+    latency_threshold_ms: 1000
+    cpu_threshold_percent: 80
+
+# Retraining Configuration
+retraining:
+  # Scheduled retraining
+  schedule: rate(30 days)  # Monthly retraining
+
+  # Trigger conditions
+  triggers:
+    data_drift: true
+    model_quality_degradation: true
+    scheduled: true
+    manual: true
+
+  # Minimum data requirements
+  min_new_samples: 1000  # Minimum new samples before retraining
+
+# Logging and Tracking
+logging:
+  level: INFO
+  cloudwatch:
+    retention_days: 30
+
+  # Experiment tracking
+  experiment_tracking:
+    enabled: true
+    backend: mlflow  # mlflow, wandb
+    mlflow:
+      tracking_uri: ""  # Set if using remote MLflow server
+    wandb:
+      project: skin-lesion-classification
+      entity: ""  # Your W&B entity
+
+# Cost Optimization
+cost:
+  use_spot_instances: true
+  s3_lifecycle_policies: true
+  endpoint_auto_scaling: true
+
+  # Budget alerts
+  budget:
+    monthly_limit_usd: 500
+    alert_threshold_percent: 80
+
+# Security
+security:
+  encryption:
+    enabled: true
+    kms_key_id: ""  # From Terraform outputs
+
+  vpc:
+    enabled: false
+    vpc_id: ""
+    subnet_ids: []
+    security_group_ids: []
+
+  # Data privacy
+  data_privacy:
+    phi_data: true  # Protected Health Information
+    anonymize_logs: true
+
+# Notifications
+notifications:
+  email: ""  # Email for alerts
+  sns_topic_arn: ""  # From Terraform outputs
+
+  # Alert on
+  alerts:
+    training_failure: true
+    deployment_failure: true
+    data_drift: true
+    model_degradation: true
+    endpoint_errors: true
+    cost_threshold: true
