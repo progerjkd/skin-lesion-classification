@@ -53,6 +53,11 @@ This project demonstrates **end-to-end MLOps practices** for healthcare computer
 
 ## Architecture
 
+> **📊 Professional AWS Diagrams Available**:
+> - **Lucidchart-style diagrams**: See [docs/AWS_ARCHITECTURE.md](docs/AWS_ARCHITECTURE.md) for detailed text-based architecture
+> - **Generate visual diagrams**: Run `python docs/generate_diagram.py` to create high-quality PNG/SVG diagrams
+> - **Import to Lucidchart/draw.io**: Use generated PNG files or the detailed documentation
+
 ### High-Level System Architecture
 
 ```mermaid
