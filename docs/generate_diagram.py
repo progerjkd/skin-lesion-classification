@@ -37,7 +37,7 @@ def create_architecture_diagram():
 
     with Diagram(
         "Skin Lesion Classification - MLOps Pipeline",
-        filename="aws_architecture_diagram",
+        filename="../images/aws_architecture_diagram",
         direction="TB",
         graph_attr=graph_attr,
         show=False,
@@ -178,7 +178,7 @@ def create_ml_pipeline_diagram():
 
     with Diagram(
         "ML Pipeline Detailed Flow",
-        filename="ml_pipeline_flow",
+        filename="../images/ml_pipeline_flow",
         direction="LR",
         show=False,
     ):
@@ -221,7 +221,7 @@ def create_monitoring_diagram():
 
     with Diagram(
         "Monitoring & Retraining Workflow",
-        filename="monitoring_workflow",
+        filename="../images/monitoring_workflow",
         direction="TB",
         show=False,
     ):
@@ -269,25 +269,26 @@ if __name__ == "__main__":
     print("Generating AWS Architecture Diagrams...")
     print("\nCreating main architecture diagram...")
     create_architecture_diagram()
-    print("✓ Created: aws_architecture_diagram.png")
+    print("✓ Created: images/aws_architecture_diagram.png")
 
     print("\nCreating ML pipeline flow diagram...")
     create_ml_pipeline_diagram()
-    print("✓ Created: ml_pipeline_flow.png")
+    print("✓ Created: images/ml_pipeline_flow.png")
 
     print("\nCreating monitoring workflow diagram...")
     create_monitoring_diagram()
-    print("✓ Created: monitoring_workflow.png")
+    print("✓ Created: images/monitoring_workflow.png")
 
     print("\n" + "="*60)
     print("All diagrams generated successfully!")
     print("="*60)
+    print("\nDiagram files saved to: images/")
     print("\nYou can:")
     print("1. View the PNG files directly")
-    print("2. Import them into presentations")
-    print("3. Convert to SVG for web use")
+    print("2. Use in README.md (already linked)")
+    print("3. Import into presentations")
     print("4. Import into Lucidchart/draw.io")
-    print("\nFor draw.io import:")
-    print("- Open draw.io")
-    print("- File → Import → Select PNG file")
+    print("\nFor Lucidchart/draw.io import:")
+    print("- Open Lucidchart or draw.io")
+    print("- File → Import → Upload PNG file")
     print("- The diagram will be imported with editable elements")
