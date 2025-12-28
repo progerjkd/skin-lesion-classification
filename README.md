@@ -5,7 +5,7 @@
 [![Terraform](https://img.shields.io/badge/IaC-Terraform-purple)](https://www.terraform.io/)
 [![PyTorch](https://img.shields.io/badge/Framework-PyTorch-red)](https://pytorch.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![MLOps](https://img.shields.io/badge/MLOps-Production%20Ready-success)](https://github.com/yourusername/skin-lesion-classification)
+[![MLOps](https://img.shields.io/badge/MLOps-Production%20Ready-success)](https://github.com/progerjkd/skin-lesion-classification)
 
 A production-ready MLOps pipeline for detecting melanoma and other skin cancers using AWS SageMaker, with automated retraining, monitoring, and deployment.
 
@@ -298,9 +298,9 @@ MIT License
 
 ## Contact
 
-Your Name - your.email@example.com
+Roger Vasconcelos - proger.mv@gmail.com
 
-Project Link: [https://github.com/yourusername/skin-lesion-classification](https://github.com/yourusername/skin-lesion-classification)
+Project Link: [https://github.com/progerjkd/skin-lesion-classification](https://github.com/progerjkd/skin-lesion-classification)
 
 ## Acknowledgments
 
