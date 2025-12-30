@@ -7,7 +7,7 @@ project:
 
 aws:
   region: us-east-1
-  account_id: ""  # Fill in your AWS account ID
+  account_id: 439456940935  # AWS Account ID
 
   # S3 Buckets (will be created by Terraform)
   buckets:
@@ -220,7 +220,7 @@ security:
 
 # Notifications
 notifications:
-  email: ""  # Email for alerts
+  email: proger.mv@gmail.com  # Email for alerts
   sns_topic_arn: ""  # From Terraform outputs
 
   # Alert on
