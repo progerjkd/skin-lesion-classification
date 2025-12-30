@@ -1,0 +1,14 @@
+FROM python:3.10-slim
+
+ENV PYTHONUNBUFFERED=1
+WORKDIR /opt/ml/code
+
+COPY docker/requirements.txt /opt/ml/code/requirements.txt
+RUN pip install --no-cache-dir -r /opt/ml/code/requirements.txt
+
+COPY src /opt/ml/code/src
+COPY setup.py /opt/ml/code/setup.py
+
+ENV PYTHONPATH=/opt/ml/code/src
+
+ENTRYPOINT ["python", "src/deployment/inference.py"]
