@@ -95,50 +95,40 @@ This project demonstrates **end-to-end MLOps practices** for healthcare computer
 ├── .github/
 │   └── workflows/          # GitHub Actions CI/CD pipelines
 ├── config/
-│   ├── config.yaml         # Main configuration
-│   ├── model_config.yaml   # Model hyperparameters
-│   └── pipeline_config.yaml # SageMaker pipeline config
+│   └── config.yaml         # Main configuration
 ├── data/
 │   ├── raw/                # Raw ISIC dataset (gitignored)
 │   ├── processed/          # Processed images
 │   └── features/           # Extracted features
 ├── infrastructure/
-│   ├── terraform/          # Terraform IaC for AWS resources
-│   └── cloudformation/     # Alternative CloudFormation templates
+│   └── terraform/          # Terraform IaC for AWS resources
 ├── models/                 # Saved model artifacts (gitignored)
 ├── notebooks/
-│   ├── 01_eda.ipynb       # Exploratory data analysis
-│   ├── 02_baseline.ipynb  # Baseline model
-│   └── 03_experiments.ipynb # Model experiments
+│   └── .gitkeep            # Placeholder for notebooks
+├── docker/
+│   ├── Dockerfile.training  # Optional training container
+│   ├── Dockerfile.inference # Optional inference container
+│   └── requirements.txt     # Minimal container deps
 ├── scripts/
 │   ├── download_data.py    # Download ISIC dataset
 │   ├── upload_to_s3.py     # Upload data to S3
 │   └── deploy_pipeline.py  # Deploy SageMaker pipeline
 ├── src/
 │   ├── preprocessing/
-│   │   ├── preprocess.py   # Image preprocessing
-│   │   └── augmentation.py # Data augmentation
+│   │   └── preprocess.py   # Image preprocessing
 │   ├── training/
-│   │   ├── train.py        # Training script
-│   │   ├── model.py        # Model architecture
-│   │   └── metrics.py      # Custom metrics
+│   │   └── train.py        # Training script
 │   ├── evaluation/
-│   │   ├── evaluate.py     # Model evaluation
-│   │   └── metrics.py      # Evaluation metrics
+│   │   └── evaluate.py     # Model evaluation
 │   ├── deployment/
-│   │   ├── inference.py    # Inference handler
-│   │   └── endpoint.py     # Endpoint configuration
+│   │   └── inference.py    # Inference handler
 │   ├── monitoring/
-│   │   ├── data_quality.py # Data quality monitoring
-│   │   ├── model_quality.py # Model quality monitoring
 │   │   └── drift_detector.py # Drift detection
 │   └── pipeline/
 │       ├── pipeline.py     # SageMaker pipeline definition
 │       └── steps.py        # Pipeline step definitions
 ├── tests/
-│   ├── test_preprocessing.py
-│   ├── test_training.py
-│   └── test_inference.py
+│   └── test_preprocessing.py
 ├── .gitignore
 ├── requirements.txt
 ├── setup.py
@@ -216,7 +206,7 @@ terraform apply
 ### Deploy ML Pipeline
 
 ```bash
-python scripts/deploy_pipeline.py --config config/pipeline_config.yaml
+python scripts/deploy_pipeline.py --config config/config.yaml
 ```
 
 ## Datasets

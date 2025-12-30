@@ -134,6 +134,12 @@ aws s3 sync data/raw s3://${DATA_BUCKET}/data/raw/
 aws s3 ls s3://${DATA_BUCKET}/data/raw/ --recursive | wc -l
 ```
 
+Or use the helper script:
+
+```bash
+python scripts/upload_to_s3.py --bucket ${DATA_BUCKET} --input-dir data/raw --prefix data/raw
+```
+
 ## Step 7: Build and Push Docker Images
 
 ```bash
@@ -153,7 +159,7 @@ docker build -t ${INFERENCE_REPO}:latest -f docker/Dockerfile.inference .
 docker push ${INFERENCE_REPO}:latest
 ```
 
-**Note:** If docker files don't exist yet, you can use SageMaker's built-in containers initially.
+**Note:** You can use the provided Dockerfiles under `docker/`, or rely on SageMaker built-in containers initially.
 
 ## Step 8: Deploy SageMaker Pipeline
 

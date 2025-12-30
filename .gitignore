@@ -106,3 +106,4 @@ temp/
 secrets/
 credentials/
 *.secret
+*.code-workspace
