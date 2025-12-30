@@ -130,12 +130,13 @@ resource "aws_sagemaker_model_package_group" "skin_lesion" {
 # Note: Feature groups are typically created programmatically
 
 # SageMaker Domain for Studio (optional, for experimentation)
+# Note: Studio domain REQUIRES VPC configuration, so only create when VPC is enabled
 resource "aws_sagemaker_domain" "studio" {
-  count       = var.environment == "dev" ? 1 : 0
+  count       = (var.environment == "dev" && var.enable_vpc) ? 1 : 0
   domain_name = "${local.resource_prefix}-studio"
   auth_mode   = "IAM"
-  vpc_id      = var.enable_vpc ? var.vpc_id : null
-  subnet_ids  = var.enable_vpc ? var.subnet_ids : null
+  vpc_id      = var.vpc_id
+  subnet_ids  = var.subnet_ids
 
   default_user_settings {
     execution_role = aws_iam_role.sagemaker_execution.arn

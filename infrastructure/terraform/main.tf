@@ -8,15 +8,15 @@ terraform {
     }
   }
 
-  backend "s3" {
-    # Backend configuration should be provided via backend config file
-    # terraform init -backend-config=backend.conf
-    # bucket         = "your-terraform-state-bucket"
-    # key            = "skin-lesion-classification/terraform.tfstate"
-    # region         = "us-east-1"
-    # encrypt        = true
-    # dynamodb_table = "terraform-state-lock"
-  }
+  # Using local backend for demo/development
+  # For production, uncomment and configure S3 backend
+  # backend "s3" {
+  #   bucket         = "your-terraform-state-bucket"
+  #   key            = "skin-lesion-classification/terraform.tfstate"
+  #   region         = "us-east-1"
+  #   encrypt        = true
+  #   dynamodb_table = "terraform-state-lock"
+  # }
 }
 
 provider "aws" {

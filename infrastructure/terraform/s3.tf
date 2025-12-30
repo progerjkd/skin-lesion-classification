@@ -31,16 +31,18 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "data" {
   }
 }
 
+# S3 Lifecycle configuration for data bucket
+# Note: Intelligent-Tiering can be enabled manually in AWS Console if needed
+# Using standard lifecycle transitions to avoid configuration complexity
 resource "aws_s3_bucket_lifecycle_configuration" "data" {
   bucket = aws_s3_bucket.data.id
 
   rule {
-    id     = "intelligent-tiering"
+    id     = "transition-to-glacier"
     status = "Enabled"
 
-    transition {
-      days          = 30
-      storage_class = "INTELLIGENT_TIERING"
+    filter {
+      prefix = ""
     }
 
     transition {
@@ -52,6 +54,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "data" {
   rule {
     id     = "delete-old-versions"
     status = "Enabled"
+
+    filter {
+      prefix = ""
+    }
 
     noncurrent_version_expiration {
       noncurrent_days = 90
@@ -140,6 +146,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "logs" {
   rule {
     id     = "delete-old-logs"
     status = "Enabled"
+
+    filter {
+      prefix = ""
+    }
 
     expiration {
       days = 90

@@ -380,6 +380,142 @@ The CI/CD pipeline will:
 
 ## Troubleshooting
 
+> **📋 For detailed Terraform issues and fixes, see [TERRAFORM_ISSUES.md](../TERRAFORM_ISSUES.md)**
+
+### Terraform Issues
+
+#### 1. Terraform Validation Errors
+
+**Error:** `Error: InvalidParameterValue` or validation warnings
+
+**Common Causes:**
+- Missing required attributes in resource blocks
+- Incorrect variable values
+- Provider version incompatibilities
+
+**Solution:**
+```bash
+# Validate configuration
+cd infrastructure/terraform
+terraform init -backend=false
+terraform validate
+
+# Check for specific errors
+terraform fmt -check
+```
+
+**Common Fixes:**
+- Ensure all lifecycle rules have `filter` blocks (see [TERRAFORM_ISSUES.md](../TERRAFORM_ISSUES.md))
+- Verify SageMaker Studio domain only created when VPC is enabled
+- Check that all required variables are set in `terraform.tfvars`
+
+#### 2. SageMaker Studio Domain VPC Error
+
+**Error:** `SageMaker Studio domain requires VPC configuration`
+
+**Cause:** Studio domain cannot be created without VPC configuration
+
+**Solution:**
+- **Option A:** Skip Studio domain (simplified deployment)
+  ```hcl
+  # terraform.tfvars
+  enable_vpc = false
+  ```
+  Studio domain will not be created.
+
+- **Option B:** Enable VPC and provide VPC details
+  ```hcl
+  # terraform.tfvars
+  enable_vpc = true
+  vpc_id = "vpc-xxxxxxxxx"
+  subnet_ids = ["subnet-xxxxx", "subnet-yyyyy"]
+  ```
+
+**See:** [TERRAFORM_ISSUES.md](../TERRAFORM_ISSUES.md#issue-1-sagemaker-studio-domain-vpc-configuration) for detailed explanation
+
+#### 3. S3 Lifecycle Configuration Warnings
+
+**Warning:** `No attribute specified when one (and only one) of [rule[0].filter,rule[0].prefix] is required`
+
+**Cause:** Newer AWS provider versions require `filter` blocks in lifecycle rules
+
+**Solution:**
+All lifecycle rules should include a `filter` block:
+```hcl
+rule {
+  id     = "my-rule"
+  status = "Enabled"
+  
+  filter {
+    prefix = ""  # Required for all objects
+  }
+  
+  # ... rest of rule configuration
+}
+```
+
+**Status:** ✅ Fixed in current configuration
+
+#### 4. Terraform Plan Fails
+
+**Error:** Various errors during `terraform plan`
+
+**Solution:**
+1. **Check AWS credentials:**
+   ```bash
+   aws sts get-caller-identity
+   ```
+
+2. **Verify variables are set:**
+   ```bash
+   # Create terraform.tfvars if missing
+   cat > terraform.tfvars <<EOF
+   project_name = "skin-lesion-classification"
+   environment = "dev"
+   aws_region = "us-east-1"
+   enable_vpc = false
+   enable_encryption = true
+   alert_email = "your.email@example.com"
+   EOF
+   ```
+
+3. **Initialize Terraform:**
+   ```bash
+   terraform init
+   ```
+
+4. **Review plan output:**
+   ```bash
+   terraform plan -out=tfplan
+   ```
+
+#### 5. Resource Already Exists
+
+**Error:** `Error creating resource: already exists`
+
+**Solution:**
+- Check if resources were created outside Terraform
+- Import existing resources:
+  ```bash
+  terraform import aws_s3_bucket.data <bucket-name>
+  ```
+- Or destroy and recreate:
+  ```bash
+  terraform destroy -target=aws_s3_bucket.data
+  terraform apply
+  ```
+
+#### 6. Lambda Function Placeholder Warnings
+
+**Warning:** Lambda functions use placeholder code
+
+**Status:** This is expected. Placeholder files are provided for initial deployment.
+
+**Solution:**
+- Lambda functions can be updated after deployment
+- Implement actual Lambda code when ready to use Step Functions workflow
+- See `infrastructure/terraform/lambda_placeholder.py` for structure
+
 ### Common Issues
 
 #### 1. Insufficient Service Limits
@@ -423,10 +559,22 @@ The CI/CD pipeline will:
 
 ### Getting Help
 
-- Check CloudWatch Logs
-- Review SageMaker execution details
+**Terraform Issues:**
+- See [TERRAFORM_ISSUES.md](../TERRAFORM_ISSUES.md) for detailed Terraform troubleshooting
+- Run `terraform validate` to check configuration
 - Check Terraform state: `terraform show`
+
+**SageMaker Issues:**
+- Check CloudWatch Logs: `/aws/sagemaker/TrainingJobs`, `/aws/sagemaker/ProcessingJobs`
+- Review SageMaker execution details in AWS Console
+- Verify S3 paths are accessible
+- Check IAM role permissions
+
+**General:**
+- Review error messages in CloudWatch Logs
+- Check AWS Service Health Dashboard
 - AWS Support (if you have support plan)
+- GitHub Issues (for project-specific issues)
 
 ## Cleanup
 

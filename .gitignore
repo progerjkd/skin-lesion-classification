@@ -107,3 +107,4 @@ secrets/
 credentials/
 *.secret
 *.code-workspace
+.cursor/
