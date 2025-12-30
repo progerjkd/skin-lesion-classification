@@ -1,14 +1,14 @@
 # Streamlit Demo Requirements
 
 # Web framework
-streamlit==1.29.0
+streamlit>=1.29.0
 
-# Deep learning
-torch==2.1.0
-torchvision==0.16.0
+# Deep learning (use latest compatible versions)
+torch>=2.0.0
+torchvision>=0.15.0
 
 # Image processing
-Pillow==10.1.0
+Pillow>=10.0.0
 
 # Utilities
-numpy==1.24.3
+numpy>=1.24.0
