@@ -4,14 +4,19 @@ SageMaker Pipeline Step Definitions
 This module contains functions to create individual pipeline steps.
 """
 
+from pathlib import Path
+
 from sagemaker.workflow.steps import ProcessingStep, TrainingStep
 from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.pytorch.estimator import PyTorch
+from sagemaker.pytorch.processing import PyTorchProcessor
+from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.inputs import TrainingInput
 from sagemaker.model_metrics import MetricsSource, ModelMetrics
-from sagemaker.workflow.properties import PropertyFile
+
+SRC_DIR = Path(__file__).resolve().parents[1]
 
 
 def create_preprocessing_step(
@@ -72,7 +77,7 @@ def create_preprocessing_step(
                 destination=f"s3://{bucket}/data/processed/test",
             ),
         ],
-        code="preprocessing/preprocess.py",
+        code=str(SRC_DIR / "preprocessing" / "preprocess.py"),
         job_arguments=[
             "--train-split",
             str(train_split),
@@ -119,7 +124,7 @@ def create_training_step(
     # PyTorch estimator for training
     pytorch_estimator = PyTorch(
         entry_point="train.py",
-        source_dir="training",
+        source_dir=str(SRC_DIR / "training"),
         role=role,
         instance_type=training_instance_type,
         instance_count=training_instance_count,
@@ -184,8 +189,9 @@ def create_evaluation_step(
     Returns:
         ProcessingStep for evaluation
     """
-    sklearn_processor = SKLearnProcessor(
-        framework_version="1.2-1",
+    pytorch_processor = PyTorchProcessor(
+        framework_version="2.1.0",
+        py_version="py310",
         instance_type=processing_instance_type,
         instance_count=1,
         base_job_name="skin-lesion-evaluation",
@@ -194,7 +200,7 @@ def create_evaluation_step(
 
     evaluation_step = ProcessingStep(
         name="EvaluateModel",
-        processor=sklearn_processor,
+        processor=pytorch_processor,
         inputs=[
             ProcessingInput(
                 source=model_data,
@@ -212,7 +218,7 @@ def create_evaluation_step(
                 destination=f"s3://{bucket}/evaluation",
             ),
         ],
-        code="evaluation/evaluate.py",
+        code=str(SRC_DIR / "evaluation" / "evaluate.py"),
     )
 
     return evaluation_step
@@ -222,7 +228,8 @@ def create_register_model_step(
     model_data,
     model_package_group_name,
     model_approval_status,
-    evaluation_report: PropertyFile,
+    evaluation_report_uri,
+    role: str,
 ) -> RegisterModel:
     """
     Create model registration step.
@@ -231,7 +238,7 @@ def create_register_model_step(
         model_data: Model artifacts S3 path
         model_package_group_name: Model package group name parameter
         model_approval_status: Model approval status parameter
-        evaluation_report: Evaluation report property file
+        evaluation_report_uri: S3 URI to evaluation report JSON
 
     Returns:
         RegisterModel step
@@ -239,15 +246,23 @@ def create_register_model_step(
     # Define model metrics
     model_metrics = ModelMetrics(
         model_statistics=MetricsSource(
-            s3_uri=evaluation_report,
+            s3_uri=evaluation_report_uri,
             content_type="application/json",
         )
     )
 
+    model = PyTorchModel(
+        model_data=model_data,
+        role=role,
+        entry_point="inference.py",
+        source_dir=str(SRC_DIR / "deployment"),
+        framework_version="2.1.0",
+        py_version="py310",
+    )
+
     register_step = RegisterModel(
         name="RegisterModel",
-        estimator=None,  # Will use model_data directly
-        model_data=model_data,
+        model=model,
         content_types=["application/x-image"],
         response_types=["application/json"],
         inference_instances=["ml.m5.xlarge", "ml.m5.2xlarge"],

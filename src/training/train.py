@@ -322,7 +322,7 @@ def get_data_loaders(
         num_workers: Number of data loading workers
 
     Returns:
-        Training and validation data loaders
+        Training and validation data loaders, class count, and class names
     """
     # Training transforms (with augmentation)
     train_transforms = transforms.Compose(
@@ -364,7 +364,7 @@ def get_data_loaders(
     logger.info(f"Validation samples: {len(val_dataset)}")
     logger.info(f"Number of classes: {len(train_dataset.classes)}")
 
-    return train_loader, val_loader, len(train_dataset.classes)
+    return train_loader, val_loader, len(train_dataset.classes), train_dataset.classes
 
 
 def main():
@@ -404,7 +404,7 @@ def main():
     logger.info(f"Using device: {device}")
 
     # Get data loaders
-    train_loader, val_loader, num_classes = get_data_loaders(
+    train_loader, val_loader, num_classes, class_names = get_data_loaders(
         args.train, args.validation, args.batch_size, args.num_workers
     )
 
@@ -430,6 +430,21 @@ def main():
     )
 
     trainer.train()
+
+    model_config = {
+        "model_architecture": args.model_architecture,
+        "num_classes": num_classes,
+        "class_names": class_names,
+        "image_size": 224,
+        "normalization": {
+            "mean": [0.485, 0.456, 0.406],
+            "std": [0.229, 0.224, 0.225],
+        },
+    }
+    config_path = Path(args.model_dir) / "model_config.json"
+    with open(config_path, "w") as f:
+        json.dump(model_config, f, indent=2)
+    logger.info(f"Saved model configuration to {config_path}")
 
 
 if __name__ == "__main__":

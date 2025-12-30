@@ -25,7 +25,7 @@ from sagemaker.workflow.steps import ProcessingStep, TrainingStep, CreateModelSt
 from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.conditions import ConditionGreaterThanOrEqualTo
 from sagemaker.workflow.condition_step import ConditionStep
-from sagemaker.workflow.functions import JsonGet
+from sagemaker.workflow.functions import JsonGet, Join
 from sagemaker.workflow.properties import PropertyFile
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.processing import ProcessingInput, ProcessingOutput
@@ -213,12 +213,23 @@ class SkinLesionPipeline:
         )
         evaluation_step.add_property_file(evaluation_report)
 
+        evaluation_report_uri = Join(
+            on="/",
+            values=[
+                evaluation_step.properties.ProcessingOutputConfig.Outputs[
+                    "evaluation"
+                ].S3Output.S3Uri,
+                "evaluation.json",
+            ],
+        )
+
         # Step 4: Model registration (conditional)
         register_step = create_register_model_step(
             model_data=training_step.properties.ModelArtifacts.S3ModelArtifacts,
             model_package_group_name=self.model_package_group_name,
             model_approval_status=self.model_approval_status,
-            evaluation_report=evaluation_report,
+            evaluation_report_uri=evaluation_report_uri,
+            role=self.role,
         )
 
         # Condition: Register model only if accuracy meets threshold

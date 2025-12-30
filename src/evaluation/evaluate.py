@@ -11,25 +11,14 @@ This script handles:
 import argparse
 import json
 import logging
-import os
 from pathlib import Path
+import tarfile
 import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
-from torchvision import datasets
-from sklearn.metrics import (
-    accuracy_score,
-    precision_score,
-    recall_score,
-    f1_score,
-    roc_auc_score,
-    confusion_matrix,
-    classification_report,
-)
-import matplotlib.pyplot as plt
-import seaborn as sns
+from torchvision import datasets, models
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -65,34 +54,80 @@ class ModelEvaluator:
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Load model
+        self.model_config = self._load_model_config()
         self.model = self._load_model()
 
         # Create data loader
-        self.test_loader, self.class_names = self._create_data_loader()
+        self.test_loader, dataset_classes = self._create_data_loader()
+        self.class_names = self.model_config.get("class_names") or dataset_classes
+
+    def _load_model_config(self) -> dict:
+        """Load model configuration metadata if available."""
+        tar_path = self.model_path / "model.tar.gz"
+        if tar_path.exists():
+            logger.info("Extracting model.tar.gz for evaluation")
+            with tarfile.open(tar_path, "r:gz") as tar:
+                tar.extractall(self.model_path)
+
+        config_path = self.model_path / "model_config.json"
+        if not config_path.exists():
+            logger.warning("Model config not found; using defaults")
+            return {}
+
+        with open(config_path, "r") as f:
+            return json.load(f)
+
+    def _build_model(self, model_name: str, num_classes: int) -> nn.Module:
+        """Build model architecture to match training."""
+        if model_name == "resnet50":
+            model = models.resnet50(pretrained=False)
+            num_ftrs = model.fc.in_features
+            model.fc = nn.Linear(num_ftrs, num_classes)
+        elif model_name == "resnet101":
+            model = models.resnet101(pretrained=False)
+            num_ftrs = model.fc.in_features
+            model.fc = nn.Linear(num_ftrs, num_classes)
+        elif model_name == "efficientnet_b0":
+            model = models.efficientnet_b0(pretrained=False)
+            num_ftrs = model.classifier[1].in_features
+            model.classifier[1] = nn.Linear(num_ftrs, num_classes)
+        elif model_name == "efficientnet_b4":
+            model = models.efficientnet_b4(pretrained=False)
+            num_ftrs = model.classifier[1].in_features
+            model.classifier[1] = nn.Linear(num_ftrs, num_classes)
+        elif model_name == "densenet121":
+            model = models.densenet121(pretrained=False)
+            num_ftrs = model.classifier.in_features
+            model.classifier = nn.Linear(num_ftrs, num_classes)
+        elif model_name == "mobilenet_v2":
+            model = models.mobilenet_v2(pretrained=False)
+            num_ftrs = model.classifier[1].in_features
+            model.classifier[1] = nn.Linear(num_ftrs, num_classes)
+        else:
+            raise ValueError(f"Unsupported model: {model_name}")
+
+        return model
 
     def _load_model(self) -> nn.Module:
-        """Load the trained model."""
+        """Load the trained model state_dict."""
         logger.info(f"Loading model from {self.model_path}")
 
-        # Find model file
-        model_files = list(self.model_path.glob("*.pth"))
-        if not model_files:
-            raise FileNotFoundError(f"No model file found in {self.model_path}")
+        model_file = self.model_path / "model.pth"
+        if not model_file.exists():
+            model_files = list(self.model_path.glob("*.pth"))
+            if not model_files:
+                raise FileNotFoundError(f"No model file found in {self.model_path}")
+            model_file = model_files[0]
 
-        model_file = model_files[0]
+        model_name = self.model_config.get("model_architecture", "resnet50")
+        num_classes = self.model_config.get("num_classes")
+        if not num_classes:
+            num_classes = len(self.model_config.get("class_names", [])) or 2
 
-        # Load model
-        # Note: In production, you'd need to reconstruct the model architecture
-        # For now, we'll assume the model is saved with torch.save(model, path)
-        try:
-            model = torch.load(model_file, map_location=self.device)
-        except Exception as e:
-            logger.error(f"Error loading model: {e}")
-            # If the above fails, you need to reconstruct the architecture
-            # and load state_dict
-            raise
+        model = self._build_model(model_name, num_classes)
 
+        state_dict = torch.load(model_file, map_location=self.device)
+        model.load_state_dict(state_dict)
         model.eval()
         model.to(self.device)
 
@@ -132,8 +167,6 @@ class ModelEvaluator:
 
         all_labels = []
         all_predictions = []
-        all_probabilities = []
-
         self.model.eval()
 
         with torch.no_grad():
@@ -141,132 +174,98 @@ class ModelEvaluator:
                 inputs = inputs.to(self.device)
 
                 outputs = self.model(inputs)
-                probabilities = torch.softmax(outputs, dim=1)
                 _, predicted = outputs.max(1)
 
                 all_labels.extend(labels.numpy())
                 all_predictions.extend(predicted.cpu().numpy())
-                all_probabilities.extend(probabilities.cpu().numpy())
 
         all_labels = np.array(all_labels)
         all_predictions = np.array(all_predictions)
-        all_probabilities = np.array(all_probabilities)
 
-        # Calculate metrics
         metrics = self._calculate_metrics(
-            all_labels, all_predictions, all_probabilities
+            all_labels, all_predictions
         )
-
-        # Generate visualizations
-        self._generate_visualizations(all_labels, all_predictions, all_probabilities)
-
-        # Save evaluation report
-        self._save_report(metrics, all_labels, all_predictions)
+        self._save_report(metrics)
 
         logger.info("Evaluation complete!")
         return metrics
 
     def _calculate_metrics(
-        self, labels: np.ndarray, predictions: np.ndarray, probabilities: np.ndarray
+        self, labels: np.ndarray, predictions: np.ndarray
     ) -> dict:
-        """Calculate evaluation metrics."""
+        """Calculate evaluation metrics without external dependencies."""
         logger.info("Calculating metrics...")
 
         num_classes = len(self.class_names)
+        accuracy = float(np.mean(labels == predictions))
 
-        # Basic metrics
-        accuracy = accuracy_score(labels, predictions)
-        precision = precision_score(labels, predictions, average="weighted")
-        recall = recall_score(labels, predictions, average="weighted")
-        f1 = f1_score(labels, predictions, average="weighted")
+        per_class_metrics = {}
+        weighted_precision = 0.0
+        weighted_recall = 0.0
+        weighted_f1 = 0.0
+        total_support = 0
 
-        # AUC
-        try:
-            if num_classes == 2:
-                auc = roc_auc_score(labels, probabilities[:, 1])
-            else:
-                auc = roc_auc_score(
-                    labels, probabilities, multi_class="ovr", average="weighted"
-                )
-        except Exception as e:
-            logger.warning(f"Could not calculate AUC: {e}")
-            auc = 0.0
+        confusion = np.zeros((num_classes, num_classes), dtype=int)
+        for true_label, pred_label in zip(labels, predictions):
+            confusion[int(true_label), int(pred_label)] += 1
 
-        # Per-class metrics
-        per_class_precision = precision_score(labels, predictions, average=None)
-        per_class_recall = recall_score(labels, predictions, average=None)
-        per_class_f1 = f1_score(labels, predictions, average=None)
+        for idx, class_name in enumerate(self.class_names):
+            tp = confusion[idx, idx]
+            fp = int(confusion[:, idx].sum() - tp)
+            fn = int(confusion[idx, :].sum() - tp)
+            support = int(confusion[idx, :].sum())
 
-        metrics = {
-            "metrics": {
-                "accuracy": float(accuracy),
+            precision = tp / (tp + fp) if (tp + fp) else 0.0
+            recall = tp / (tp + fn) if (tp + fn) else 0.0
+            f1 = (
+                2 * precision * recall / (precision + recall)
+                if (precision + recall)
+                else 0.0
+            )
+
+            per_class_metrics[class_name] = {
                 "precision": float(precision),
                 "recall": float(recall),
                 "f1_score": float(f1),
-                "auc": float(auc),
+                "support": support,
+            }
+
+            weighted_precision += precision * support
+            weighted_recall += recall * support
+            weighted_f1 += f1 * support
+            total_support += support
+
+        if total_support:
+            weighted_precision /= total_support
+            weighted_recall /= total_support
+            weighted_f1 /= total_support
+
+        metrics = {
+            "metrics": {
+                "accuracy": accuracy,
+                "precision": float(weighted_precision),
+                "recall": float(weighted_recall),
+                "f1_score": float(weighted_f1),
+                "auc": 0.0,
             },
-            "per_class_metrics": {
-                self.class_names[i]: {
-                    "precision": float(per_class_precision[i]),
-                    "recall": float(per_class_recall[i]),
-                    "f1_score": float(per_class_f1[i]),
-                }
-                for i in range(num_classes)
-            },
+            "per_class_metrics": per_class_metrics,
+            "class_names": self.class_names,
+            "confusion_matrix": confusion.tolist(),
         }
 
         logger.info(f"Accuracy: {accuracy:.4f}")
-        logger.info(f"Precision: {precision:.4f}")
-        logger.info(f"Recall: {recall:.4f}")
-        logger.info(f"F1 Score: {f1:.4f}")
-        logger.info(f"AUC: {auc:.4f}")
+        logger.info(f"Precision: {weighted_precision:.4f}")
+        logger.info(f"Recall: {weighted_recall:.4f}")
+        logger.info(f"F1 Score: {weighted_f1:.4f}")
 
         return metrics
 
-    def _generate_visualizations(
-        self, labels: np.ndarray, predictions: np.ndarray, probabilities: np.ndarray
-    ):
-        """Generate evaluation visualizations."""
-        logger.info("Generating visualizations...")
-
-        # Confusion matrix
-        cm = confusion_matrix(labels, predictions)
-
-        plt.figure(figsize=(12, 10))
-        sns.heatmap(
-            cm,
-            annot=True,
-            fmt="d",
-            cmap="Blues",
-            xticklabels=self.class_names,
-            yticklabels=self.class_names,
-        )
-        plt.title("Confusion Matrix")
-        plt.ylabel("True Label")
-        plt.xlabel("Predicted Label")
-        plt.tight_layout()
-        plt.savefig(self.output_dir / "confusion_matrix.png")
-        plt.close()
-
-        logger.info("Visualizations saved")
-
-    def _save_report(self, metrics: dict, labels: np.ndarray, predictions: np.ndarray):
+    def _save_report(self, metrics: dict):
         """Save evaluation report."""
-        # Save metrics JSON
         report_path = self.output_dir / "evaluation.json"
         with open(report_path, "w") as f:
             json.dump(metrics, f, indent=2)
-
-        # Save classification report
-        report = classification_report(
-            labels, predictions, target_names=self.class_names
-        )
-        report_text_path = self.output_dir / "classification_report.txt"
-        with open(report_text_path, "w") as f:
-            f.write(report)
-
         logger.info(f"Evaluation report saved to {report_path}")
-        logger.info(f"Classification report saved to {report_text_path}")
 
 
 def main():
