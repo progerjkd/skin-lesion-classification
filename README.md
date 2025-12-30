@@ -51,6 +51,26 @@ This project demonstrates **end-to-end MLOps practices** for healthcare computer
 - Python 3.10+
 - Unit & Integration Testing
 
+## 🎮 Try the Interactive Demo
+
+**Want to see the model in action?** Try the interactive Streamlit demo app:
+
+```bash
+cd demo
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+The demo allows you to:
+- ✨ Upload dermoscopic images
+- 🔍 Get instant predictions with confidence scores
+- 📊 Compare different model architectures (ResNet, EfficientNet, DenseNet)
+- 📚 Learn about different skin lesion types
+
+**[📖 View Demo Documentation](demo/README.md)** | **[🚀 Quick Start Guide](demo/README.md#-quick-start)**
+
+> **Note**: The demo runs locally and doesn't require AWS setup. Perfect for portfolio presentations and interviews!
+
 ## Architecture
 
 > **📊 View Complete Architecture Documentation**: [docs/AWS_ARCHITECTURE.md](docs/AWS_ARCHITECTURE.md) | **🔧 Regenerate Diagrams**: `python docs/generate_diagram.py`
